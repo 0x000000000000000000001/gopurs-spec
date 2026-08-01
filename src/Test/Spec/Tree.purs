@@ -34,7 +34,7 @@ import Data.Either (Either, either)
 import Data.Foldable (class Foldable, all, foldMapDefaultL, foldl, foldr)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (class Newtype, un)
-import Data.Traversable (for, for_)
+import Data.Traversable (traverse, for_)
 import Data.Tuple.Nested (type (/\), (/\))
 
 type Name = String
@@ -147,7 +147,7 @@ filterTree f = case _ of
 
 -- | Count the total number of tests in a spec
 countTests :: ∀ n c t. Array (Tree n c t) -> Int
-countTests g = execState (for g go) 0
+countTests g = execState (traverse go g) 0
   where
   go (Node _ xs) = for_ xs go
   go (Leaf _ _) = State.modify_ (_ + 1)
