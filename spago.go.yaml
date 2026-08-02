@@ -1,0 +1,149 @@
+workspace:
+  packageSet:
+    registry: 75.0.0
+
+package:
+  name: spec
+  publish:
+    license: MIT
+    version: 8.1.2
+    location:
+      githubOwner: purescript-spec
+      githubRepo: purescript-spec
+  dependencies:
+    - aff: ">=8.0.0 <9.0.0"
+    - ansi: ">=7.0.0 <8.0.0"
+    - arrays: ">=7.3.0 <8.0.0"
+    - avar: ">=5.0.0 <6.0.0"
+    - bifunctors: ">=6.0.0 <7.0.0"
+    - control: ">=6.0.0 <7.0.0"
+    - datetime: ">=6.1.0 <7.0.0"
+    - effect: ">=4.0.0 <5.0.0"
+    - either: ">=6.1.0 <7.0.0"
+    - exceptions: ">=6.1.0 <7.0.0"
+    - foldable-traversable: ">=6.0.0 <7.0.0"
+    - fork: ">=6.0.0 <7.0.0"
+    - identity: ">=6.0.0 <7.0.0"
+    - integers: ">=6.0.0 <7.0.0"
+    - lists: ">=7.0.0 <8.0.0"
+    - maybe: ">=6.0.0 <7.0.0"
+    - newtype: ">=5.0.0 <6.0.0"
+    - now: ">=6.0.0 <7.0.0"
+    - ordered-collections: ">=3.2.0 <4.0.0"
+    - parallel: ">=7.0.0 <8.0.0"
+    - pipes: ">=8.0.0 <9.0.0"
+    - prelude: ">=6.0.1 <7.0.0"
+    - refs: ">=6.0.0 <7.0.0"
+    - strings: ">=6.0.1 <7.0.0"
+    - tailrec: ">=6.1.0 <7.0.0"
+    - transformers: ">=6.1.0 <7.0.0"
+    - tuples: ">=7.0.0 <8.0.0"
+    - debug
+  test:
+    main: Test.Main
+    dependencies:
+      - console
+      - node-buffer
+      - node-child-process
+      - node-event-emitter
+      - node-fs
+      - node-os
+      - node-process
+      - node-streams
+      - refs
+      - spec-node
+
+workspace:
+  packageSet:
+    registry: 77.7.0
+  extraPackages:
+    aff:
+      path: "../gopurs-aff"
+    argonaut-core:
+      path: "../gopurs-argonaut-core"
+    arrays:
+      path: "../gopurs-arrays"
+    assert:
+      path: "../gopurs-assert"
+    avar:
+      path: "../gopurs-avar"
+    catenable-lists:
+      path: "../gopurs-catenable-lists"
+    console:
+      path: "../gopurs-console"
+    datetime:
+      path: "../gopurs-datetime"
+    effect:
+      path: "../gopurs-effect"
+    enums:
+      path: "../gopurs-enums"
+    exceptions:
+      path: "../gopurs-exceptions"
+    foldable-traversable:
+      path: "../gopurs-foldable-traversable"
+    foreign:
+      path: "../gopurs-foreign"
+    foreign-object:
+      path: "../gopurs-foreign-object"
+    functions:
+      path: "../gopurs-functions"
+    integers:
+      path: "../gopurs-integers"
+    js-promise:
+      path: "../gopurs-js-promise"
+    js-promise-aff:
+      path: "../gopurs-js-promise-aff"
+    js-uri:
+      path: "../gopurs-js-uri"
+    lazy:
+      path: "../gopurs-lazy"
+    node-event-emitter:
+      path: "../gopurs-node-event-emitter"
+    node-fs:
+      path: "../gopurs-node-fs"
+    node-http:
+      path: "../gopurs-node-http"
+    node-net:
+      path: "../gopurs-node-net"
+    node-path:
+      path: "../gopurs-node-path"
+    node-process:
+      path: "../gopurs-node-process"
+    node-streams:
+      path: "../gopurs-node-streams"
+    now:
+      path: "../gopurs-now"
+    nullable:
+      path: "../gopurs-nullable"
+    numbers:
+      path: "../gopurs-numbers"
+    partial:
+      path: "../gopurs-partial"
+    prelude:
+      path: "../gopurs-prelude"
+    random:
+      path: "../gopurs-random"
+    record:
+      path: "../gopurs-record"
+    refs:
+      path: "../gopurs-refs"
+    run:
+      path: "../gopurs-run"
+    simple-json:
+      path: "../gopurs-simple-json"
+    st:
+      path: "../gopurs-st"
+    strings:
+      path: "../gopurs-strings"
+    test:
+      path: "../gopurs-test"
+    unfoldable:
+      path: "../gopurs-unfoldable"
+    unsafe-coerce:
+      path: "../gopurs-unsafe-coerce"
+    uuid:
+      path: "../gopurs-uuid"
+    variant:
+      path: "../gopurs-variant"
+    yoga-json:
+      path: "../gopurs-yoga-json"
