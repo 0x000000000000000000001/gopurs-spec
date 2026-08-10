@@ -23,6 +23,8 @@ import Node.EventEmitter (on_)
 import Node.FS.Aff as FS
 import Node.FS.Constants as FSC
 import Node.FS.Stats (isDirectory)
+
+
 import Node.OS (tmpdir)
 import Node.Process (cwd)
 import Node.Stream as Stream
@@ -57,18 +59,21 @@ prepareEnvironment { debug } =
   Ref.new Nothing <#> \envDirVar ->
     { runFile: \program -> do
         dir <- ensureEnvironmentInitialized envDirVar
-        ensureDirExists $ dir // "test"
-        FS.writeTextFile UTF8 (dir // "test/Main.purs") program
-        run' dir "npx" ["spago", "build"]
-        res <- run dir "npx" $ ["spago", "test", "-q"]
-        pure $
-          res
+        ensureDirExists $ dir // "src"
+        FS.writeTextFile UTF8 (dir // "src/Main.purs") program
+        _out0 <- run dir "npx" ["spago", "build", "-p", "integration-test"]
+        thisDir <- liftEffect cwd
+        _out1 <- run dir "node" [thisDir // "../gopurs/bin/gopurs.js", "build", "--output", "output", "--main", "Test.Main"]
+        run' (dir // "output") "rm" [ "-f", "go.mod" ]
+        _out2 <- run (dir // "output") "go" [ "mod", "init", "gopurs/output" ]
+        _out3 <- run (dir // "output") "go" [ "mod", "tidy" ]
+        _out4 <- run (dir // "output") "go" [ "build", "-o", "go_test_app", dir // "output" // "Test.Main" // "main" ]
+        log _out4
+        res <- run (dir // "output") "env" [ "GOGC=1000", "./go_test_app" ]
+        pure $ res
           -- Removing ESC characters (which are used for colors), because
           -- they're very inconvenient to include in the golden output files.
           # Regex.replace colorsRegex ""
-          -- Removing Spago's header text that is currently unremovable via
-          -- `--quiet`, which is a known issue:
-          -- https://github.com/purescript/spago/issues/1249
           # S.replaceAll (S.Pattern spagoTestHeader) (S.Replacement "")
 
     , cleanupEnvironment:
@@ -98,8 +103,10 @@ prepareEnvironment { debug } =
           traceLog $ "Preparing environment in: " <> dir
           copyAllFiles { from: "integration-tests/env-template", to: dir }
           patchRepoPath $ dir // "spago.yaml"
-          run' dir "npm" ["install", "purescript@" <> BuildInfo.pursVersion, "spago@" <> BuildInfo.spagoVersion]
-          copyAllFiles { from: dir // "node_modules", to: "integration-tests/env-template/node_modules" }
+          whenM (isNothing <$> FS.access (dir // "node_modules")) $
+            run' dir "npm" ["install", "spago@" <> BuildInfo.spagoVersion]
+          whenM (not <<< isNothing <$> FS.access (dir // "node_modules")) $
+            copyAllFiles { from: dir // "node_modules", to: "integration-tests/env-template/node_modules" }
           whenM (isNothing <$> FS.access (dir // "output")) $
             copyAllFiles { from: dir // "output", to: "integration-tests/env-template/output" }
           pure dir
@@ -127,14 +134,13 @@ prepareEnvironment { debug } =
         output <- Ref.new ""
         let return = cb <<< Right =<< Ref.read output
 
-        proc <- Proc.spawn' cmd args _ { cwd = Just cwd, appendStdio = Just [IO.ignore, IO.pipe, IO.pipe] }
+        proc <- Proc.spawn' "env" (["PWD=" <> cwd, cmd] <> args) _ { cwd = Just cwd, appendStdio = Just [IO.ignore, IO.pipe, IO.pipe] }
 
         for_ [Proc.stdout, Proc.stderr] \pipe ->
           pipe proc # on_ Stream.dataH \buf -> do
             str <- Buffer.toString UTF8 buf
             void $ output # Ref.modify (_ <> str)
 
-        proc # on_ Proc.exitH \_ -> return
         proc # on_ Proc.errorH \_ -> return
         proc # on_ Proc.disconnectH return
         proc # on_ Proc.closeH \_ -> return

@@ -1,4 +1,6 @@
 workspace:
+  packageSet:
+    registry: 75.0.0
   extraPackages:
     spec:
       path: SPEC_REPO_PATH
@@ -6,8 +8,98 @@ workspace:
       repo: https://github.com/purescript-spec/purescript-spec-node.git
       version: v0.0.1
       dependencies: ['argonaut-core', 'argonaut-codecs', 'optparse', 'node-fs']
-  packageSet:
-    registry: 75.0.0
+    aff:
+      path: "SPEC_REPO_PATH/../gopurs-aff"
+    argonaut-core:
+      path: "SPEC_REPO_PATH/../gopurs-argonaut-core"
+    arrays:
+      path: "SPEC_REPO_PATH/../gopurs-arrays"
+    assert:
+      path: "SPEC_REPO_PATH/../gopurs-assert"
+    avar:
+      path: "SPEC_REPO_PATH/../gopurs-avar"
+    catenable-lists:
+      path: "SPEC_REPO_PATH/../gopurs-catenable-lists"
+    console:
+      path: "SPEC_REPO_PATH/../gopurs-console"
+    datetime:
+      path: "SPEC_REPO_PATH/../gopurs-datetime"
+    effect:
+      path: "SPEC_REPO_PATH/../gopurs-effect"
+    enums:
+      path: "SPEC_REPO_PATH/../gopurs-enums"
+    exceptions:
+      path: "SPEC_REPO_PATH/../gopurs-exceptions"
+    foldable-traversable:
+      path: "SPEC_REPO_PATH/../gopurs-foldable-traversable"
+    foreign:
+      path: "SPEC_REPO_PATH/../gopurs-foreign"
+    foreign-object:
+      path: "SPEC_REPO_PATH/../gopurs-foreign-object"
+    functions:
+      path: "SPEC_REPO_PATH/../gopurs-functions"
+    integers:
+      path: "SPEC_REPO_PATH/../gopurs-integers"
+    js-promise:
+      path: "SPEC_REPO_PATH/../gopurs-js-promise"
+    js-promise-aff:
+      path: "SPEC_REPO_PATH/../gopurs-js-promise-aff"
+    js-uri:
+      path: "SPEC_REPO_PATH/../gopurs-js-uri"
+    lazy:
+      path: "SPEC_REPO_PATH/../gopurs-lazy"
+    node-buffer:
+      path: "SPEC_REPO_PATH/../gopurs-node-buffer"
+    node-event-emitter:
+      path: "SPEC_REPO_PATH/../gopurs-node-event-emitter"
+    node-fs:
+      path: "SPEC_REPO_PATH/../gopurs-node-fs"
+    node-http:
+      path: "SPEC_REPO_PATH/../gopurs-node-http"
+    node-net:
+      path: "SPEC_REPO_PATH/../gopurs-node-net"
+    node-path:
+      path: "SPEC_REPO_PATH/../gopurs-node-path"
+    node-process:
+      path: "SPEC_REPO_PATH/../gopurs-node-process"
+    node-streams:
+      path: "SPEC_REPO_PATH/../gopurs-node-streams"
+    now:
+      path: "SPEC_REPO_PATH/../gopurs-now"
+    nullable:
+      path: "SPEC_REPO_PATH/../gopurs-nullable"
+    numbers:
+      path: "SPEC_REPO_PATH/../gopurs-numbers"
+    partial:
+      path: "SPEC_REPO_PATH/../gopurs-partial"
+    prelude:
+      path: "SPEC_REPO_PATH/../gopurs-prelude"
+    random:
+      path: "SPEC_REPO_PATH/../gopurs-random"
+    record:
+      path: "SPEC_REPO_PATH/../gopurs-record"
+    refs:
+      path: "SPEC_REPO_PATH/../gopurs-refs"
+    run:
+      path: "SPEC_REPO_PATH/../gopurs-run"
+    simple-json:
+      path: "SPEC_REPO_PATH/../gopurs-simple-json"
+    st:
+      path: "SPEC_REPO_PATH/../gopurs-st"
+    strings:
+      path: "SPEC_REPO_PATH/../gopurs-strings"
+    test:
+      path: "SPEC_REPO_PATH/../gopurs-test"
+    unfoldable:
+      path: "SPEC_REPO_PATH/../gopurs-unfoldable"
+    unsafe-coerce:
+      path: "SPEC_REPO_PATH/../gopurs-unsafe-coerce"
+    uuid:
+      path: "SPEC_REPO_PATH/../gopurs-uuid"
+    variant:
+      path: "SPEC_REPO_PATH/../gopurs-variant"
+    yoga-json:
+      path: "SPEC_REPO_PATH/../gopurs-yoga-json"
 
 package:
   name: integration-test

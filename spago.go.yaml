@@ -94,6 +94,8 @@ workspace:
       path: "../gopurs-js-uri"
     lazy:
       path: "../gopurs-lazy"
+    node-buffer:
+      path: "../gopurs-node-buffer"
     node-event-emitter:
       path: "../gopurs-node-event-emitter"
     node-fs:

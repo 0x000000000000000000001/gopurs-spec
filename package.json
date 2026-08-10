@@ -4,8 +4,8 @@
     "npm": "10.8"
   },
   "dependencies": {
+    "esbuild": "^0.27.4",
     "purescript": "^0.15.16",
-    "spago": "^1.0.3",
-    "esbuild": "^0.27.4"
+    "spago": "^1.0.3"
   }
 }
