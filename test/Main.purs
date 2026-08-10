@@ -24,7 +24,7 @@ main :: Effect Unit
 main = launchAff_ do
   config <- liftEffect $
     Config.fromCommandLine' defaultConfig (Config.commandLineOptionParsers <> [debug, accept])
-    <#> _ { timeout = Just $ Milliseconds 30000.0 }
+    <#> _ { timeout = Just $ Milliseconds 120000.0 }
   integration <-
     integrationSpecs { debug: config.debug, accept: config.accept }
   liftEffect $

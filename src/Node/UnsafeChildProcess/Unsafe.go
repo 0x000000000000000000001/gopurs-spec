@@ -33,13 +33,13 @@ func pumpStream(r io.Reader, streamVal gopurs_runtime.Value) {
 		if n > 0 {
 			chunk := make([]byte, n)
 			copy(chunk, buf[:n])
-			Node_EventEmitter.GopursUnsafeEmitFn1(streamVal, "data", gopurs_runtime.Box(chunk))
+			Node_EventEmitter.GopursUnsafeEmitFn2(streamVal, "data", gopurs_runtime.Box(chunk), nil)
 		}
 		if err != nil {
 			break
 		}
 	}
-	Node_EventEmitter.GopursUnsafeEmitFn1(streamVal, "end", gopurs_runtime.Box[any](nil))
+	Node_EventEmitter.GopursUnsafeEmitFn1(streamVal, "end", nil)
 }
 
 func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} {
@@ -100,7 +100,7 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 	if err != nil {
 		// Emit error
 		cpVal := gopurs_runtime.Box(cp)
-		Node_EventEmitter.GopursUnsafeEmitFn1(cpVal, "error", gopurs_runtime.Box(err))
+		Node_EventEmitter.GopursUnsafeEmitFn2(cpVal, "error", gopurs_runtime.Box(err), nil)
 		return cp
 	}
 
@@ -121,8 +121,8 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 				code = 1
 			}
 		}
-		Node_EventEmitter.GopursUnsafeEmitFn2(cpVal, "close", gopurs_runtime.Box(code), gopurs_runtime.Any(nil))
-		Node_EventEmitter.GopursUnsafeEmitFn2(cpVal, "exit", gopurs_runtime.Box(code), gopurs_runtime.Any(nil))
+		Node_EventEmitter.GopursUnsafeEmitFn3(cpVal, "close", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
+		Node_EventEmitter.GopursUnsafeEmitFn3(cpVal, "exit", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
 	}()
 	
 	return cp
