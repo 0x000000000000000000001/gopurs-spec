@@ -11,7 +11,7 @@ import Data.String.Regex.Flags (global) as Regex
 import Data.String.Regex.Unsafe (unsafeRegex) as Regex
 import Data.Traversable (for_, traverse_)
 import Effect (Effect)
-import Effect.Aff (Aff, makeAff, nonCanceler)
+import Effect.Aff (Aff, makeAff, nonCanceler, try)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Effect.Ref as Ref
@@ -63,7 +63,12 @@ prepareEnvironment { debug } =
         FS.writeTextFile UTF8 (dir // "src/Main.purs") program
         _out0 <- run dir "npx" ["spago", "build", "-p", "integration-test"]
         thisDir <- liftEffect cwd
-        _out1 <- run dir "node" [thisDir // "../gopurs/bin/gopurs.js", "build", "--output", "output", "--main", "Test.Main"]
+        gopursPath <- try (FS.stat (thisDir // "../gopurs/bin/gopurs.js")) >>= case _ of
+          Right _ -> pure (thisDir // "../gopurs/bin/gopurs.js")
+          Left _ -> try (FS.stat (thisDir // "gopurs/bin/gopurs.js")) >>= case _ of
+            Right _ -> pure (thisDir // "gopurs/bin/gopurs.js")
+            Left _ -> pure (thisDir // "bin/gopurs.js")
+        _out1 <- run dir "node" [gopursPath, "build", "--output", "output", "--main", "Test.Main"]
         run' (dir // "output") "rm" [ "-f", "go.mod" ]
         _out2 <- run (dir // "output") "go" [ "mod", "init", "gopurs/output" ]
         _out3 <- run (dir // "output") "go" [ "mod", "tidy" ]
