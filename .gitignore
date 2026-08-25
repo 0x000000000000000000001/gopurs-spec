@@ -3,6 +3,7 @@
 generated-docs/
 node_modules/
 output/
+output.bak/
 tmp/
 /*.log
 tags
@@ -12,3 +13,4 @@ tags
 .vscode/
 .DS_Store
 output
+output.bak
