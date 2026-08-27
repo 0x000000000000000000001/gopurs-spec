@@ -3,14 +3,12 @@ package Node_UnsafeChildProcess_Unsafe
 import (
 	"os/exec"
 	"gopurs/output/gopurs_runtime"
-	"gopurs/output/Node.EventEmitter"
-	"gopurs/output/Node.Stream"
 	"io"
 	"reflect"
 )
 
 type ChildProcess struct {
-	*Node_EventEmitter.EventEmitter
+	*Node_EventEmitter_EventEmitter
 	Stdout interface{}
 	Stderr interface{}
 	Stdin  interface{}
@@ -33,13 +31,13 @@ func pumpStream(r io.Reader, streamVal gopurs_runtime.Value) {
 		if n > 0 {
 			chunk := make([]byte, n)
 			copy(chunk, buf[:n])
-			Node_EventEmitter.GopursUnsafeEmitFn2(streamVal, "data", gopurs_runtime.Box(chunk), nil)
+			Node_EventEmitter_GopursUnsafeEmitFn2(streamVal, "data", gopurs_runtime.Box(chunk), nil)
 		}
 		if err != nil {
 			break
 		}
 	}
-	Node_EventEmitter.GopursUnsafeEmitFn1(streamVal, "end", nil)
+	Node_EventEmitter_GopursUnsafeEmitFn1(streamVal, "end", nil)
 }
 
 func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} {
@@ -89,18 +87,18 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 	// stdinPipe, _ := cmd.StdinPipe()
 
 	cp := &ChildProcess{
-		EventEmitter: Node_EventEmitter.NewImpl(nil).(*Node_EventEmitter.EventEmitter),
+		EventEmitter: Node_EventEmitter_NewImpl(nil).(*Node_EventEmitter_EventEmitter),
 	}
 	
-	cp.Stdout = Node_Stream.NewPassThrough()
-	cp.Stderr = Node_Stream.NewPassThrough()
+	cp.Stdout = Node_Stream_NewPassThrough()
+	cp.Stderr = Node_Stream_NewPassThrough()
 	
 	// Start the command
 	err := cmd.Start()
 	if err != nil {
 		// Emit error
 		cpVal := gopurs_runtime.Box(cp)
-		Node_EventEmitter.GopursUnsafeEmitFn2(cpVal, "error", gopurs_runtime.Box(err), nil)
+		Node_EventEmitter_GopursUnsafeEmitFn2(cpVal, "error", gopurs_runtime.Box(err), nil)
 		return cp
 	}
 
@@ -121,8 +119,8 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 				code = 1
 			}
 		}
-		Node_EventEmitter.GopursUnsafeEmitFn3(cpVal, "close", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
-		Node_EventEmitter.GopursUnsafeEmitFn3(cpVal, "exit", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
+		Node_EventEmitter_GopursUnsafeEmitFn3(cpVal, "close", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
+		Node_EventEmitter_GopursUnsafeEmitFn3(cpVal, "exit", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
 	}()
 	
 	return cp
@@ -176,6 +174,6 @@ func SpawnSyncOptsImpl(_ interface{}) interface{} { return nil }
 func UnsafeChannelRefImpl(_ interface{}) interface{} { return nil }
 func UnsafeChannelUnrefImpl(_ interface{}) interface{} { return nil }
 
-func (cp *ChildProcess) GetEventEmitter() *Node_EventEmitter.EventEmitter {
+func (cp *ChildProcess) GetEventEmitter() *Node_EventEmitter_EventEmitter {
 	return cp.EventEmitter
 }
