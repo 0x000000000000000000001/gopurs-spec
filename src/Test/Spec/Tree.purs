@@ -19,8 +19,7 @@ module Test.Spec.Tree
   , modifyAroundAction
   , parentSuite
   , parentSuiteName
-  )
-  where
+  ) where
 
 import Prelude
 
@@ -103,28 +102,30 @@ instance Eq (Item m a) where
 annotateWithPaths :: ∀ c a. Array (Tree Name c a) -> Array (Tree (Name /\ Path) c a)
 annotateWithPaths = mapWithIndex $ go []
   where
-    go path index = case _ of
-      Node c children ->
-        let name = either Just (const Nothing) c
-            nextPath = path <> [PathItem { index, name }]
-        in
-          Node (c # lmap (_ /\ path)) (mapWithIndex (go nextPath) children)
+  go path index = case _ of
+    Node c children ->
+      let
+        name = either Just (const Nothing) c
+        nextPath = path <> [ PathItem { index, name } ]
+      in
+        Node (c # lmap (_ /\ path)) (mapWithIndex (go nextPath) children)
 
-      Leaf name item ->
-        Leaf (name /\ path) item
+    Leaf name item ->
+      Leaf (name /\ path) item
 
 annotatedWithPaths :: ∀ c a. Array (Tree Name c a) -> Array (Tree TestLocator c a)
 annotatedWithPaths = mapWithIndex $ go []
   where
-    go path index = case _ of
-      Node c children ->
-        let name = either Just (const Nothing) c
-            nextPath = path <> [PathItem { index, name }]
-        in
-          Node (c # lmap (path /\ _)) (mapWithIndex (go nextPath) children)
+  go path index = case _ of
+    Node c children ->
+      let
+        name = either Just (const Nothing) c
+        nextPath = path <> [ PathItem { index, name } ]
+      in
+        Node (c # lmap (path /\ _)) (mapWithIndex (go nextPath) children)
 
-      Leaf name item ->
-        Leaf (path /\ name) item
+    Leaf name item ->
+      Leaf (path /\ name) item
 
 mapTreeAnnotations :: ∀ n m c a. (n -> m) -> Tree n c a -> Tree m c a
 mapTreeAnnotations f = case _ of
@@ -167,8 +168,8 @@ discardUnfocused ts =
     [] -> ts
     r -> r
   where
-    isFocused _ (Just (Item i)) = i.isFocused
-    isFocused _ Nothing = false
+  isFocused _ (Just (Item i)) = i.isFocused
+  isFocused _ Nothing = false
 
 -- | Modify around action of an Item
 modifyAroundAction :: ∀ g a b. (ActionWith g a -> ActionWith g b) -> Item g a -> Item g b
