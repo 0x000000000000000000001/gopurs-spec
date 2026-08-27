@@ -8,7 +8,7 @@ import (
 )
 
 type ChildProcess struct {
-	*Node_EventEmitter_EventEmitter
+	*EventEmitter
 	Stdout interface{}
 	Stderr interface{}
 	Stdin  interface{}
@@ -87,7 +87,7 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 	// stdinPipe, _ := cmd.StdinPipe()
 
 	cp := &ChildProcess{
-		EventEmitter: Node_EventEmitter_NewImpl(nil).(*Node_EventEmitter_EventEmitter),
+		EventEmitter: Node_EventEmitter_NewImpl(nil).(*EventEmitter),
 	}
 	
 	cp.Stdout = Node_Stream_NewPassThrough()
@@ -174,6 +174,6 @@ func SpawnSyncOptsImpl(_ interface{}) interface{} { return nil }
 func UnsafeChannelRefImpl(_ interface{}) interface{} { return nil }
 func UnsafeChannelUnrefImpl(_ interface{}) interface{} { return nil }
 
-func (cp *ChildProcess) GetEventEmitter() *Node_EventEmitter_EventEmitter {
+func (cp *ChildProcess) GetEventEmitter() *EventEmitter {
 	return cp.EventEmitter
 }
