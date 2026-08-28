@@ -15,7 +15,7 @@ type ChildProcess struct {
 	Pid    interface{}
 }
 
-func extractAny(val interface{}) any {
+func extractAnyUnsafe(val interface{}) any {
 	if v, ok := val.(gopurs_runtime.Value); ok {
 		if v.Type == gopurs_runtime.TypeAny {
 			return *(*any)(v.UnsafePtr)
@@ -60,7 +60,7 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 			}
 		} else {
 			// fallback for standard reflection
-			optsAny := extractAny(opts)
+			optsAny := extractAnyUnsafe(opts)
 			if optsAny != nil {
 				val := reflect.ValueOf(optsAny)
 				if val.Kind() == reflect.Ptr {
