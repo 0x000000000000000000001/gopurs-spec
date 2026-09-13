@@ -2,6 +2,7 @@ module Test.Integration where
 
 import Prelude
 
+import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), isNothing)
 import Data.String as S
@@ -14,11 +15,13 @@ import Effect (Effect)
 import Effect.Aff (Aff, makeAff, nonCanceler, try)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
+import Effect.Exception (error)
 import Effect.Ref as Ref
 import Node.Buffer as Buffer
 import Node.ChildProcess as Proc
 import Node.ChildProcess.Types as IO
 import Node.Encoding (Encoding(..))
+import Node.Errors.SystemError as SystemError
 import Node.EventEmitter (on_)
 import Node.FS.Aff as FS
 import Node.FS.Constants as FSC
@@ -68,13 +71,14 @@ prepareEnvironment { debug } =
           Left _ -> try (FS.stat (thisDir // "gopurs/bin/gopurs.js")) >>= case _ of
             Right _ -> pure (thisDir // "gopurs/bin/gopurs.js")
             Left _ -> pure (thisDir // "bin/gopurs.js")
-        _out1 <- run dir "node" [gopursPath, "build", "--output", "output", "--main", "Test.Main"]
+        _out1 <- run dir "node" [gopursPath, "--main", "Test.Main"]
         run' (dir // "output") "rm" [ "-f", "go.mod" ]
         _out2 <- run (dir // "output") "go" [ "mod", "init", "gopurs/output" ]
         _out3 <- run (dir // "output") "go" [ "mod", "tidy" ]
-        _out4 <- run (dir // "output") "go" [ "build", "-o", "go_test_app", dir // "output" // "Test.Main" // "main" ]
+        _out4 <- run (dir // "output") "go" [ "build", "-o", "go_test_app", "./main" ]
         log _out4
-        res <- run (dir // "output") "env" [ "GOGC=1000", "./go_test_app" ]
+        -- Failing spec cases intentionally exit 1; their output is checked below.
+        res <- runWithExitCodes [0, 1] (dir // "output") "env" [ "GOGC=1000", "./go_test_app" ]
         pure $ res
           -- Removing ESC characters (which are used for colors), because
           -- they're very inconvenient to include in the golden output files.
@@ -133,11 +137,18 @@ prepareEnvironment { debug } =
 
     run' cwd cmd = void <<< run cwd cmd
 
-    run cwd cmd args = do
+    run = runWithExitCodes [0]
+
+    runWithExitCodes exitCodes cwd cmd args = do
       traceLog $ "Running: " <> S.joinWith " " ([cmd] <> args)
       makeAff \cb -> do
         output <- Ref.new ""
-        let return = cb <<< Right =<< Ref.read output
+        completed <- Ref.new false
+        let finish result = do
+              done <- Ref.read completed
+              unless done do
+                Ref.write true completed
+                cb result
 
         proc <- Proc.spawn' "env" (["PWD=" <> cwd, cmd] <> args) _ { cwd = Just cwd, appendStdio = Just [IO.ignore, IO.pipe, IO.pipe] }
 
@@ -146,9 +157,14 @@ prepareEnvironment { debug } =
             str <- Buffer.toString UTF8 buf
             void $ output # Ref.modify (_ <> str)
 
-        proc # on_ Proc.errorH \_ -> return
-        proc # on_ Proc.disconnectH return
-        proc # on_ Proc.closeH \_ -> return
+        proc # on_ Proc.errorH \err -> finish $ Left $ SystemError.toError err
+        proc # on_ Proc.closeH \exit -> do
+          captured <- Ref.read output
+          case exit of
+            IO.Normally code | Array.elem code exitCodes -> finish $ Right captured
+            _ -> finish $ Left $ error $
+              "Command failed (" <> show exit <> "): "
+                <> S.joinWith " " ([cmd] <> args) <> "\n" <> captured
 
         pure nonCanceler
 
