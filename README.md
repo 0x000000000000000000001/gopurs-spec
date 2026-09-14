@@ -1,5 +1,14 @@
 # PureScript Spec
 
+## Local Go development
+
+This checkout is part of the gopurs library family. Use the
+[local Go development guide](../gopurs/README.md#develop-one-library-locally)
+for toolchain setup, sibling dependencies, Spago configuration and Go commands.
+The existing npm, Bower and Dhall commands below retain their JavaScript or
+upstream roles.
+
+
 [![Build Status](https://github.com/purescript-spec/purescript-spec/workflows/CI/badge.svg?branch=master)](https://github.com/purescript-spec/purescript-spec/actions?query=workflow%3ACI+branch%3Amaster)
 
 PureScript Spec is a testing framework for Purescript, inspired by
