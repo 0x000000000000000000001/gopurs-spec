@@ -8,6 +8,13 @@ for toolchain setup, sibling dependencies, Spago configuration and Go commands.
 The existing npm, Bower and Dhall commands below retain their JavaScript or
 upstream roles.
 
+`../gopurs/bin/modtest spec` runs this suite in a fresh copy with private
+temporaries. Direct `bin/test` cleans only this checkout. The integration tests
+use the caller's `spago` and `../gopurs/bin/gopurs`, including `GOPURS_JS` or
+native host settings, and need no npm installation in `env-template`.
+`bin/test` also builds `Test.IntegrationEnvironment` and runs its Node driver
+to check fresh initialization and recovery after a failed initialization.
+
 
 [![Build Status](https://github.com/purescript-spec/purescript-spec/workflows/CI/badge.svg?branch=master)](https://github.com/purescript-spec/purescript-spec/actions?query=workflow%3ACI+branch%3Amaster)
 
@@ -146,7 +153,7 @@ requests are encouraged.
 
 ## License
 
-[MIT License](LICENSE.md).
+[MIT License](LICENSE).
 
 ## Status
 

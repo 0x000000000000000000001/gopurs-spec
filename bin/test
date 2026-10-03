@@ -16,13 +16,18 @@ if [ "$CLEAN" == "1" ]; then
 fi
 
 # Remove cache for safety
-rm -rf output .spago .cache ../gopurs-*/output ../gopurs-*/.spago ../gopurs-*/.cache
+rm -rf output .spago .cache
 
 rm -f spago.yaml
 ln -s spago.go.yaml spago.yaml
 
 echo "=== Building project with spago ==="
 spago build || { echo "Spago build failed"; exit 1; }
+
+echo "=== Checking integration environment initialization ==="
+../gopurs/bin/gopurs --main Test.IntegrationEnvironment
+(cd output && go mod tidy && go build -o integration_environment ./main)
+node --test test/integration-environment.mjs
 
 echo "=== Generating Go code with gopurs ==="
 ../gopurs/bin/gopurs --main Test.Main || exit 1

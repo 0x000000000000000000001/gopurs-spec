@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), isNothing)
+import Data.Maybe (Maybe(..))
 import Data.String as S
 import Data.String as Str
 import Data.String.Regex (replace) as Regex
@@ -12,7 +12,7 @@ import Data.String.Regex.Flags (global) as Regex
 import Data.String.Regex.Unsafe (unsafeRegex) as Regex
 import Data.Traversable (for_, traverse_)
 import Effect (Effect)
-import Effect.Aff (Aff, makeAff, nonCanceler, try)
+import Effect.Aff (Aff, generalBracket, makeAff, nonCanceler, try)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Effect.Exception (error)
@@ -31,7 +31,6 @@ import Node.FS.Stats (isDirectory)
 import Node.OS (tmpdir)
 import Node.Process (cwd)
 import Node.Stream as Stream
-import Spago.Generated.BuildInfo as BuildInfo
 import Test.Spec (Spec, afterAll, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 
@@ -64,14 +63,14 @@ prepareEnvironment { debug } =
         dir <- ensureEnvironmentInitialized envDirVar
         ensureDirExists $ dir // "src"
         FS.writeTextFile UTF8 (dir // "src/Main.purs") program
-        _out0 <- run dir "npx" ["spago", "build", "-p", "integration-test"]
+        _out0 <- run dir "spago" ["build", "-p", "integration-test"]
         thisDir <- liftEffect cwd
-        gopursPath <- try (FS.stat (thisDir // "../gopurs/bin/gopurs.js")) >>= case _ of
-          Right _ -> pure (thisDir // "../gopurs/bin/gopurs.js")
-          Left _ -> try (FS.stat (thisDir // "gopurs/bin/gopurs.js")) >>= case _ of
-            Right _ -> pure (thisDir // "gopurs/bin/gopurs.js")
-            Left _ -> pure (thisDir // "bin/gopurs.js")
-        _out1 <- run dir "node" [gopursPath, "--main", "Test.Main"]
+        gopursPath <- try (FS.stat (thisDir // "../gopurs/bin/gopurs")) >>= case _ of
+          Right _ -> pure (thisDir // "../gopurs/bin/gopurs")
+          Left _ -> try (FS.stat (thisDir // "gopurs/bin/gopurs")) >>= case _ of
+            Right _ -> pure (thisDir // "gopurs/bin/gopurs")
+            Left _ -> pure (thisDir // "bin/gopurs")
+        _out1 <- run dir gopursPath ["--main", "Test.Main"]
         run' (dir // "output") "rm" [ "-f", "go.mod" ]
         _out2 <- run (dir // "output") "go" [ "mod", "init", "gopurs/output" ]
         _out3 <- run (dir // "output") "go" [ "mod", "tidy" ]
@@ -90,8 +89,9 @@ prepareEnvironment { debug } =
           Just dir | debug -> do
             traceLog "Skipping environment cleanup due to debug=true flag"
             traceLog $ "Environment at: " <> dir
-          Just dir ->
+          Just dir -> do
             rmdirRec dir
+            liftEffect $ Ref.write Nothing envDirVar
           Nothing ->
             pure unit
     }
@@ -106,19 +106,25 @@ prepareEnvironment { debug } =
       liftEffect (Ref.read envDirVar) >>= case _ of
         Just d ->
           pure d
-        Nothing -> do
-          dir <- liftEffect tmpdir >>= \tmp -> FS.mkdtemp $ tmp // "purescript-spec-test-env"
-          liftEffect $ Ref.write (Just dir) envDirVar
-          traceLog $ "Preparing environment in: " <> dir
-          copyAllFiles { from: "integration-tests/env-template", to: dir }
-          patchRepoPath $ dir // "spago.yaml"
-          whenM (isNothing <$> FS.access (dir // "node_modules")) $
-            run' dir "npm" ["install", "spago@" <> BuildInfo.spagoVersion]
-          whenM (not <<< isNothing <$> FS.access (dir // "node_modules")) $
-            copyAllFiles { from: dir // "node_modules", to: "integration-tests/env-template/node_modules" }
-          whenM (isNothing <$> FS.access (dir // "output")) $
-            copyAllFiles { from: dir // "output", to: "integration-tests/env-template/output" }
-          pure dir
+        Nothing ->
+          generalBracket
+            (liftEffect tmpdir >>= \tmp -> FS.mkdtemp $ tmp // "purescript-spec-test-env")
+            { failed: \_ dir -> discardEnvironment envDirVar dir
+            , killed: \_ dir -> discardEnvironment envDirVar dir
+            , completed: \_ _ -> pure unit
+            }
+            \dir -> do
+              traceLog $ "Preparing environment in: " <> dir
+              copyAllFiles { from: "integration-tests/env-template", to: dir }
+              patchRepoPath $ dir // "spago.yaml"
+              -- Publish only a complete environment. Spago and gopurs come
+              -- from the caller's toolchain; the template is read-only.
+              liftEffect $ Ref.write (Just dir) envDirVar
+              pure dir
+
+    discardEnvironment envDirVar dir = do
+      liftEffect $ Ref.write Nothing envDirVar
+      rmdirRec dir
 
     patchRepoPath file = do
       thisDir <- liftEffect cwd
@@ -128,7 +134,8 @@ prepareEnvironment { debug } =
 
     copyAllFiles { from, to } = do
       ensureDirExists to
-      FS.readdir from >>= traverse_ \f -> do
+      files <- FS.readdir from
+      for_ (Array.filter (\f -> not $ Array.elem f ["node_modules", "output"]) files) \f -> do
         stat <- FS.stat $ from // f
         if isDirectory stat then
           copyAllFiles { from: from // f, to: to // f }
