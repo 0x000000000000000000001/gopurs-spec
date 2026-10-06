@@ -1,5 +1,6 @@
 .psci
 .psci_modules/
+.purs-repl
 generated-docs/
 node_modules/
 output/
