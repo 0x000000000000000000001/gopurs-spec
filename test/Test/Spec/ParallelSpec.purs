@@ -8,6 +8,10 @@ import Test.Spec (Spec, describe, it, parallel, pending, sequential)
 
 parallelSpec :: Spec Unit
 parallelSpec = describe "Parallel" do
+  -- These three pending leaves are intentional reporter fixtures: a mixed
+  -- sequential group, a deeply nested pending-only group and a parallel group.
+  -- PendingSpec checks their execution/event semantics; pending-mixed-contexts
+  -- checks their rendered output through the integration runner.
   describe "g" do
     it "g.1" $ delay $ Milliseconds 500.0
     it "g.2" $ delay $ Milliseconds 500.0

@@ -24,14 +24,14 @@ runnerSpec =
   describe "Test" $
     describe "Spec" $
       describe "Runner" do
-        it "collects \"it\" and \"pending\" in Describe groups" do
+        it "collects \"it\" in Describe groups" do
           runSpecFocused successTest `shouldEqual`
             [ Node (Left "a")
               [ Node (Left "b") [ Leaf "works" $ Just false ]
               ]
             ]
 
-        it "collects \"it\" and \"pending\" with shared Describes" do
+        it "collects \"it\" with shared Describes" do
           runSpecFocused sharedDescribeTest `shouldEqual`
             [ Node (Left "a")
               [ Node (Left "b") [ Leaf "works" $ Just false ]

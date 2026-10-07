@@ -14,6 +14,7 @@ import Test.Spec.AssertionSpec (assertionSpec)
 import Test.Spec.HoistSpec (hoistSpecSpec)
 import Test.Spec.HookSpec (hookSpec)
 import Test.Spec.ParallelSpec (parallelSpec)
+import Test.Spec.PendingSpec (pendingSpec)
 import Test.Spec.Reporter (specReporter)
 import Test.Spec.Reporter.TeamCitySpec (teamcitySpec)
 import Test.Spec.Runner.Node (runSpecAndExitProcess')
@@ -41,6 +42,7 @@ main = launchAff_ do
       hookSpec
       hoistSpecSpec
       parallelSpec
+      pendingSpec
       teamcitySpec
 
 type Config = Config.TestRunConfig' (debug :: Boolean, accept :: Boolean)

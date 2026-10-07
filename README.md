@@ -15,6 +15,13 @@ native host settings, and need no npm installation in `env-template`.
 `bin/test` also builds `Test.IntegrationEnvironment` and runs its Node driver
 to check fresh initialization and recovery after a failed initialization.
 
+The three `pending` leaves in `ParallelSpec` are intentional reporter fixtures:
+one in a sequential group, one in a deeply nested pending-only group, and one
+in a parallel group. `PendingSpec` checks skipped bodies and per-test hooks,
+result trees, event paths, counts, a parallel rendezvous and nested sequential
+ordering. The `pending-mixed-contexts` integration case checks their rendered
+output. These checks are included in the ordinary `bin/test` suite.
+
 
 [![Build Status](https://github.com/purescript-spec/purescript-spec/workflows/CI/badge.svg?branch=master)](https://github.com/purescript-spec/purescript-spec/actions?query=workflow%3ACI+branch%3Amaster)
 
