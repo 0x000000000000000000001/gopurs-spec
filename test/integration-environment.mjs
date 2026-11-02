@@ -14,9 +14,23 @@ const run = promisify(execFile);
 const fakeTool = `#!/usr/bin/env node
 const fs = require("node:fs");
 const path = require("node:path");
+const { spawn } = require("node:child_process");
 const tool = path.basename(process.argv[1]);
 fs.appendFileSync(process.env.SPEC_TEST_CALLS, tool + "\\n");
 if (tool === "spago") {
+  const started = path.join(process.env.SPEC_TEST_ROOT, "cancel-started");
+  if (process.env.SPEC_TEST_CANCEL === "1" && !fs.existsSync(started)) {
+    if (process.env.SPEC_TEST_DESCENDANT === "1") {
+      const source = "const fs = require('node:fs'); process.stdout.write('ready'); setTimeout(() => fs.writeFileSync(process.env.SPEC_TEST_ROOT + '/cancel-late', JSON.stringify({ pid: process.pid, cwd: process.cwd(), program: fs.readFileSync('src/Main.purs', 'utf8') })), 500);";
+      const descendant = spawn(process.execPath, ["-e", source], { stdio: ["ignore", "pipe", "inherit"] });
+      descendant.stdout.once("data", () => fs.writeFileSync(started, JSON.stringify({ parent: process.pid, descendant: descendant.pid })));
+    } else {
+      fs.writeFileSync(started, String(process.pid));
+      setTimeout(() => {
+        fs.writeFileSync(path.join(process.env.SPEC_TEST_ROOT, "cancel-late"), JSON.stringify({ pid: process.pid, cwd: process.cwd(), program: fs.readFileSync("src/Main.purs", "utf8") }));
+      }, 500);
+    }
+  }
   const config = fs.readFileSync("spago.yaml", "utf8");
   if (config.includes("SPEC_REPO_PATH") || !config.includes(process.env.SPEC_TEST_ROOT)) process.exit(41);
   fs.mkdirSync("output", { recursive: true });
@@ -39,7 +53,7 @@ function fixture(t) {
   const env = { ...process.env, TMPDIR: temporary, PATH: join(base, "bin") + ":" + process.env.PATH, SPEC_TEST_CALLS: calls, SPEC_TEST_ROOT: root };
   t.after(() => rmSync(base, { recursive: true, force: true }));
   const configure = () => writeFileSync(join(template, "spago.yaml"), "workspace:\n  extraPackages:\n    spec:\n      path: SPEC_REPO_PATH\n");
-  return { template, temporary, calls, configure, run: retry => run(app, [], { cwd: root, env: { ...env, SPEC_TEST_RETRY: retry ? "1" : "0" }, timeout: 30_000 }) };
+  return { template, temporary, calls, configure, run: (retry, cancel = false, descendant = false) => run(app, [], { cwd: root, env: { ...env, SPEC_TEST_RETRY: retry ? "1" : "0", SPEC_TEST_CANCEL: cancel ? "1" : "0", SPEC_TEST_DESCENDANT: descendant ? "1" : "0" }, timeout: 30_000 }) };
 }
 
 test("fresh integration uses the caller's tools and leaves its template untouched", async t => {
@@ -48,6 +62,8 @@ test("fresh integration uses the caller's tools and leaves its template untouche
   const config = readFileSync(join(f.template, "spago.yaml"), "utf8");
   const result = await f.run(false);
   assert.match(result.stdout, /environment contract passed/);
+  assert.match(result.stdout, /\[integration\] start prepare:purescript/);
+  assert.match(result.stdout, /\[integration\] end runtime elapsedMs=.* success outputChars=/);
   assert.deepEqual(readdirSync(f.template), ["spago.yaml"]);
   assert.equal(readFileSync(join(f.template, "spago.yaml"), "utf8"), config);
   assert.deepEqual(readFileSync(f.calls, "utf8").trim().split("\n"), ["spago", "gopurs", "go", "go", "go"]);
@@ -58,5 +74,20 @@ test("failed initialization is cleaned up and can be retried on the same environ
   const f = fixture(t);
   const result = await f.run(true);
   assert.match(result.stdout, /environment contract passed/);
+  assert.deepEqual(readdirSync(f.temporary), []);
+});
+
+test("canceling a case stops its child before the next case reuses the environment", async t => {
+  const f = fixture(t);
+  f.configure();
+  const result = await f.run(false, true);
+  assert.match(result.stdout, /canceled prepare:purescript; child group and pipes closed/);
+  assert.deepEqual(readdirSync(f.temporary), []);
+});
+
+test("canceling a case also stops descendants before the environment is reused", async t => {
+  const f = fixture(t);
+  f.configure();
+  await f.run(false, true, true);
   assert.deepEqual(readdirSync(f.temporary), []);
 });

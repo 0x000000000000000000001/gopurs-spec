@@ -1,10 +1,13 @@
 package Node_UnsafeChildProcess_Unsafe
 
 import (
-	"os/exec"
 	"gopurs/output/gopurs_runtime"
 	"io"
+	"os"
+	"os/exec"
 	"reflect"
+	"sync"
+	"syscall"
 )
 
 type ChildProcess struct {
@@ -13,6 +16,11 @@ type ChildProcess struct {
 	Stderr interface{}
 	Stdin  interface{}
 	Pid    interface{}
+
+	processGroup  int
+	closed        chan struct{}
+	terminateOnce sync.Once
+	terminateErr  error
 }
 
 func extractAnyUnsafe(val interface{}) any {
@@ -82,32 +90,55 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 		}
 	}
 
-	stdoutPipe, _ := cmd.StdoutPipe()
-	stderrPipe, _ := cmd.StderrPipe()
-	// stdinPipe, _ := cmd.StdinPipe()
-
+	// Each spawned command owns a process group so cancellation also reaches
+	// descendants retaining its output pipes. Supported hosts are Linux/macOS.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cp := &ChildProcess{
 		EventEmitter: Node_EventEmitter_NewImpl(nil).(*EventEmitter),
+		closed:       make(chan struct{}),
 	}
-	
 	cp.Stdout = Node_Stream_NewPassThrough()
 	cp.Stderr = Node_Stream_NewPassThrough()
-	
-	// Start the command
-	err := cmd.Start()
-	if err != nil {
-		// Emit error
-		cpVal := gopurs_runtime.Box(cp)
+	cpVal := gopurs_runtime.Box(cp)
+	failStart := func(err error) interface{} {
+		close(cp.closed)
 		Node_EventEmitter_GopursUnsafeEmitFn2(cpVal, "error", gopurs_runtime.Box(err), nil)
 		return cp
 	}
 
-	cpVal := gopurs_runtime.Box(cp)
-	stdoutVal := gopurs_runtime.Box(cp.Stdout)
-	stderrVal := gopurs_runtime.Box(cp.Stderr)
+	// Own the pipes ourselves: cmd.Wait must not close a StdoutPipe reader
+	// while its data callbacks are still draining buffered output.
+	stdoutRead, stdoutWrite, err := os.Pipe()
+	if err != nil {
+		return failStart(err)
+	}
+	stderrRead, stderrWrite, err := os.Pipe()
+	if err != nil {
+		stdoutRead.Close()
+		stdoutWrite.Close()
+		return failStart(err)
+	}
+	cmd.Stdout = stdoutWrite
+	cmd.Stderr = stderrWrite
+	err = cmd.Start()
+	stdoutWrite.Close()
+	stderrWrite.Close()
+	if err != nil {
+		stdoutRead.Close()
+		stderrRead.Close()
+		return failStart(err)
+	}
+	cp.processGroup = cmd.Process.Pid
 
-	go pumpStream(stdoutPipe, stdoutVal)
-	go pumpStream(stderrPipe, stderrVal)
+	var streams sync.WaitGroup
+	streams.Add(2)
+	pump := func(reader *os.File, stream interface{}) {
+		defer streams.Done()
+		defer reader.Close()
+		pumpStream(reader, gopurs_runtime.Box(stream))
+	}
+	go pump(stdoutRead, cp.Stdout)
+	go pump(stderrRead, cp.Stderr)
 
 	go func() {
 		err := cmd.Wait()
@@ -119,11 +150,35 @@ func SpawnOptsImpl(command string, args []string, opts interface{}) interface{} 
 				code = 1
 			}
 		}
-		Node_EventEmitter_GopursUnsafeEmitFn3(cpVal, "close", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
 		Node_EventEmitter_GopursUnsafeEmitFn3(cpVal, "exit", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
+		streams.Wait()
+		Node_EventEmitter_GopursUnsafeEmitFn3(cpVal, "close", gopurs_runtime.Box(code), gopurs_runtime.Any(nil), nil)
+		close(cp.closed)
 	}()
-	
 	return cp
+}
+
+// TerminateAndWait cancels the command and its process group, then waits until
+// output readers and close callbacks have finished. Call outside event callbacks.
+// A signaling error is returned rather than waiting indefinitely for an unkillable
+// process; successful return guarantees output cleanup. Repeated calls are safe.
+func (cp *ChildProcess) TerminateAndWait() error {
+	select {
+	case <-cp.closed:
+		return nil
+	default:
+	}
+	cp.terminateOnce.Do(func() {
+		err := syscall.Kill(-cp.processGroup, syscall.SIGKILL)
+		if err != nil && err != syscall.ESRCH {
+			cp.terminateErr = err
+		}
+	})
+	if cp.terminateErr != nil {
+		return cp.terminateErr
+	}
+	<-cp.closed
+	return nil
 }
 
 func UnsafeStdout(cp interface{}) interface{} {

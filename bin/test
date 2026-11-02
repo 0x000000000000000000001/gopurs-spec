@@ -15,6 +15,9 @@ if [ "$CLEAN" == "1" ]; then
   (cd "${COMPILER_DIR}" && npm run build) || { echo "Compiler build failed"; exit 1; }
 fi
 
+echo "=== Checking native child-process lifecycle ==="
+bin/test-child-process-native
+
 # Remove cache for safety
 rm -rf output .spago .cache
 

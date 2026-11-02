@@ -3,8 +3,10 @@ module Test.Integration where
 import Prelude
 
 import Data.Array as Array
+import Data.DateTime.Instant (diff)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
 import Data.String as S
 import Data.String as Str
 import Data.String.Regex (replace) as Regex
@@ -12,10 +14,11 @@ import Data.String.Regex.Flags (global) as Regex
 import Data.String.Regex.Unsafe (unsafeRegex) as Regex
 import Data.Traversable (for_, traverse_)
 import Effect (Effect)
-import Effect.Aff (Aff, generalBracket, makeAff, nonCanceler, try)
+import Effect.Aff (Aff, Canceler(..), Milliseconds, generalBracket, makeAff, nonCanceler, try)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Effect.Exception (error)
+import Effect.Now (now)
 import Effect.Ref as Ref
 import Node.Buffer as Buffer
 import Node.ChildProcess as Proc
@@ -33,6 +36,9 @@ import Node.Process (cwd)
 import Node.Stream as Stream
 import Test.Spec (Spec, afterAll, describe, it)
 import Test.Spec.Assertions (shouldEqual)
+
+-- Cancellation completes only after the child process group and its pipes close.
+foreign import terminateAndWaitImpl :: Proc.ChildProcess -> Effect Boolean -> Effect Unit -> Effect Unit
 
 -- | Reads the contents of `/integration-tests/cases` and turns each
 -- | subdirectory into a test case. See `/integration-tests/cases/README` for
@@ -63,21 +69,20 @@ prepareEnvironment { debug } =
         dir <- ensureEnvironmentInitialized envDirVar
         ensureDirExists $ dir // "src"
         FS.writeTextFile UTF8 (dir // "src/Main.purs") program
-        _out0 <- run dir "spago" ["build", "-p", "integration-test"]
+        _out0 <- run "prepare:purescript" dir "spago" ["build", "-p", "integration-test"]
         thisDir <- liftEffect cwd
         gopursPath <- try (FS.stat (thisDir // "../gopurs/bin/gopurs")) >>= case _ of
           Right _ -> pure (thisDir // "../gopurs/bin/gopurs")
           Left _ -> try (FS.stat (thisDir // "gopurs/bin/gopurs")) >>= case _ of
             Right _ -> pure (thisDir // "gopurs/bin/gopurs")
             Left _ -> pure (thisDir // "bin/gopurs")
-        _out1 <- run dir gopursPath ["--main", "Test.Main"]
-        run' (dir // "output") "rm" [ "-f", "go.mod" ]
-        _out2 <- run (dir // "output") "go" [ "mod", "init", "gopurs/output" ]
-        _out3 <- run (dir // "output") "go" [ "mod", "tidy" ]
-        _out4 <- run (dir // "output") "go" [ "build", "-o", "go_test_app", "./main" ]
-        log _out4
+        _out1 <- run "prepare:gopurs" dir gopursPath ["--main", "Test.Main"]
+        void $ run "prepare:go-mod-reset" (dir // "output") "rm" [ "-f", "go.mod" ]
+        _out2 <- run "prepare:go-mod-init" (dir // "output") "go" [ "mod", "init", "gopurs/output" ]
+        _out3 <- run "prepare:go-mod-tidy" (dir // "output") "go" [ "mod", "tidy" ]
+        _out4 <- run "prepare:go-build" (dir // "output") "go" [ "build", "-o", "go_test_app", "./main" ]
         -- Failing spec cases intentionally exit 1; their output is checked below.
-        res <- runWithExitCodes [0, 1] (dir // "output") "env" [ "GOGC=1000", "./go_test_app" ]
+        res <- runWithExitCodes [0, 1] "runtime" (dir // "output") "env" [ "GOGC=1000", "./go_test_app" ]
         pure $ res
           -- Removing ESC characters (which are used for colors), because
           -- they're very inconvenient to include in the golden output files.
@@ -142,12 +147,11 @@ prepareEnvironment { debug } =
         else
           FS.copyFile' (from // f) (to // f) FSC.copyFile_FICLONE
 
-    run' cwd cmd = void <<< run cwd cmd
-
     run = runWithExitCodes [0]
 
-    runWithExitCodes exitCodes cwd cmd args = do
-      traceLog $ "Running: " <> S.joinWith " " ([cmd] <> args)
+    runWithExitCodes exitCodes phase cwd cmd args = do
+      started <- liftEffect now
+      log $ "[integration] start " <> phase <> " cwd=" <> cwd <> " command=" <> S.joinWith " " ([cmd] <> args)
       makeAff \cb -> do
         output <- Ref.new ""
         completed <- Ref.new false
@@ -155,9 +159,14 @@ prepareEnvironment { debug } =
               done <- Ref.read completed
               unless done do
                 Ref.write true completed
+                ended <- now
+                log $ "[integration] end " <> phase <> " elapsedMs=" <> show (unwrap (ended `diff` started :: Milliseconds))
+                  <> case result of
+                    Right captured -> " success outputChars=" <> show (S.length captured)
+                    Left err -> " failure: " <> show err
                 cb result
 
-        proc <- Proc.spawn' "env" (["PWD=" <> cwd, cmd] <> args) _ { cwd = Just cwd, appendStdio = Just [IO.ignore, IO.pipe, IO.pipe] }
+        proc <- Proc.spawn' "env" (["PWD=" <> cwd, cmd] <> args) _ { cwd = Just cwd, detached = Just true, appendStdio = Just [IO.ignore, IO.pipe, IO.pipe] }
 
         for_ [Proc.stdout, Proc.stderr] \pipe ->
           pipe proc # on_ Stream.dataH \buf -> do
@@ -173,7 +182,12 @@ prepareEnvironment { debug } =
               "Command failed (" <> show exit <> "): "
                 <> S.joinWith " " ([cmd] <> args) <> "\n" <> captured
 
-        pure nonCanceler
+        pure $ Canceler \_ -> do
+          log $ "[integration] cancel " <> phase
+          makeAff \canceled -> do
+            terminateAndWaitImpl proc (Ref.read completed) (canceled (Right unit))
+            pure nonCanceler
+          log $ "[integration] canceled " <> phase <> "; child group and pipes closed"
 
     ensureDirExists dir =
       FS.access dir >>= case _ of
