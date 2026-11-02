@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Exercise the real FFI source without compiling the PureScript suite.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source_file="${GOPURS_CHILD_PROCESS_SOURCE:-$PWD/src/Node/UnsafeChildProcess/Unsafe.go}"
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/gopurs-child-process.XXXXXX")"
+trap 'rm -rf "$scratch"' EXIT
+mkdir -p "$scratch/childprocess" "$scratch/output/gopurs_runtime"
+cp "$source_file" "$scratch/childprocess/Unsafe.go"
+cp test/native-child-process/*_test.go "$scratch/childprocess/"
+cp test/native-child-process/runtime.go "$scratch/output/gopurs_runtime/"
+printf 'module gopurs\n\ngo 1.20\n' > "$scratch/go.mod"
+cd "$scratch"
+GOCACHE="$scratch/gocache" GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local \
+  go test -timeout 15s -count=1 -v "$@" ./childprocess

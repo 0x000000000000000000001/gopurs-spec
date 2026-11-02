@@ -25,7 +25,6 @@ main :: Effect Unit
 main = launchAff_ do
   config <- liftEffect $
     Config.fromCommandLine' defaultConfig (Config.commandLineOptionParsers <> [debug, accept])
-    <#> _ { timeout = Just $ Milliseconds 120000.0 }
   integration <-
     integrationSpecs { debug: config.debug, accept: config.accept }
   liftEffect $
@@ -48,7 +47,10 @@ main = launchAff_ do
 type Config = Config.TestRunConfig' (debug :: Boolean, accept :: Boolean)
 
 defaultConfig :: Config
-defaultConfig = Config.defaultConfig `merge` { debug: false, accept: false }
+-- An integration case includes cold compilation as well as fixture execution.
+-- Apply this finite default before parsing so --timeout and --no-timeout work.
+defaultConfig = (Config.defaultConfig { timeout = Just $ Milliseconds 300000.0 })
+  `merge` { debug: false, accept: false }
 
 debug :: Config.OptionParser Config
 debug = ado
