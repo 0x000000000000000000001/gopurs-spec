@@ -11,6 +11,7 @@ import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Effect.Console as Console
 import Effect.Exception (error, message)
+import Node.ChildProcess.Types as ChildProcess
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as FS
 import Node.OS (tmpdir)
@@ -22,6 +23,9 @@ import Test.Spec.Assertions (fail, shouldEqual)
 -- this entry point exercises the actual native Aff/filesystem implementation.
 main :: Effect Unit
 main = runAff_ finish do
+  ChildProcess.fromKillSignal (ChildProcess.intSignal 15) `shouldEqual` Left 15
+  ChildProcess.fromKillSignal (ChildProcess.intSignal (-15)) `shouldEqual` Left (-15)
+  ChildProcess.fromKillSignal (ChildProcess.stringSignal "SIGTERM") `shouldEqual` Right "SIGTERM"
   environment <- liftEffect $ prepareEnvironment { debug: false }
   cancel <- liftEffect $ lookupEnv "SPEC_TEST_CANCEL"
   when (cancel == Just "1") do

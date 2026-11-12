@@ -27,6 +27,9 @@ ln -s spago.go.yaml spago.yaml
 echo "=== Building project with spago ==="
 spago build || { echo "Spago build failed"; exit 1; }
 
+echo "=== Checking node-child-process value contracts ==="
+node test/child-process-values.mjs
+
 echo "=== Checking integration environment initialization ==="
 ../gopurs/bin/gopurs --main Test.IntegrationEnvironment
 (cd output && go mod tidy && go build -o integration_environment ./main)

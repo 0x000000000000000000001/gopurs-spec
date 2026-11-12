@@ -14,6 +14,12 @@ use the caller's `spago` and `../gopurs/bin/gopurs`, including `GOPURS_JS` or
 native host settings, and need no npm installation in `env-template`.
 `bin/test` also builds `Test.IntegrationEnvironment` and runs its Node driver
 to check fresh initialization and recovery after a failed initialization.
+The auxiliary Go files under `src/Node/ChildProcess` support this test suite's
+`undefined` option sentinel and integer/string kill-signal conversion, alongside
+the existing child-process lifecycle implementation. They do not constitute a
+complete `node-child-process` port. The value-contract test compares these
+helpers with the installed dependency's JavaScript and the current compiler's
+runtime; `Test.IntegrationEnvironment` also checks their generated bridge.
 
 The three `pending` leaves in `ParallelSpec` are intentional reporter fixtures:
 one in a sequential group, one in a deeply nested pending-only group, and one
