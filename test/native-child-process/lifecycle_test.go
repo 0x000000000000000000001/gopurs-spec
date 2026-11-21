@@ -73,7 +73,15 @@ func TestCloseAfterDraining(t *testing.T) {
 }
 func TestLargeOutputIsExact(t *testing.T) {
 	p := newProbe()
-	cp := SpawnOptsImpl("/bin/sh", []string{"-c", `dd if=/dev/zero bs=4096 count=64 2>/dev/null; dd if=/dev/zero bs=4096 count=64 1>&2 2>/dev/null; printf stdout-tail; printf stderr-tail >&2`}, nil)
+	// Use system utilities even when the inherited PATH contains a custom dd.
+	cp := SpawnOptsImpl("/bin/sh", []string{"-c", `
+set -e
+PATH=/usr/bin:/bin
+dd if=/dev/zero bs=4096 count=64 2>/dev/null
+dd if=/dev/zero bs=4096 count=64 1>&2 2>/dev/null
+printf stdout-tail
+printf stderr-tail >&2
+`}, nil)
 	await(t, p.closed, "large output close")
 	if err := terminator(t, cp).TerminateAndWait(); err != nil {
 		t.Fatal(err)
